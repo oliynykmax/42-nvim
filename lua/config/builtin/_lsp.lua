@@ -48,9 +48,11 @@ local on_attach = function(client, bufnr)
 			vim.o.winbar = "%{%v:lua.require'nvim-navic'.get_location()%}"
 		end
 end
+local lspconfig = require('lspconfig')
+local mason_lspconfig = require('mason-lspconfig')
 
 -- Load the user-specified LSP servers.
-local servers = require("config.lsp_servers")
+local servers_config = require("config.lsp_servers") -- Renamed to avoid conflict
 
 vim.api.nvim_create_autocmd({"BufRead", "BufNewFile"}, {
 	pattern = "*.tpp",
@@ -59,29 +61,46 @@ vim.api.nvim_create_autocmd({"BufRead", "BufNewFile"}, {
 	end
 })
 
--- nvim-cmp supports additional completion capabilities, so broadcast that to servers
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
 
--- Ensure the servers above are installed
-local mason_lspconfig = require 'mason-lspconfig'
-
--- Shut up we are loading the servers. Dont worry.
 mason_lspconfig.setup {
-	ensure_installed = vim.tbl_keys(servers),
+	ensure_installed = vim.tbl_keys(servers_config),
+    -- consider adding automatic_installation = true
 }
 
-mason_lspconfig.setup_handlers {
-	function(server_name)
-		require('lspconfig')[server_name].setup {
-			capabilities = capabilities,
-			on_attach = on_attach,
-			settings = servers[server_name],
-			filetypes = (servers[server_name] or {}).filetypes,
-			cmd = (servers[server_name] or {}).cmd
-		}
-	end
-}
+-- NEW WAY to iterate and setup servers:
+for server_name, server_specific_config in pairs(servers_config) do
+    local opts = {
+        capabilities = capabilities,
+        on_attach = on_attach,
+        settings = server_specific_config.settings, -- Access settings from server_specific_config
+        filetypes = server_specific_config.filetypes,
+        cmd = server_specific_config.cmd
+        -- any other options from server_specific_config can be merged here if needed
+    }
+
+    -- A common pattern is to let lspconfig handle defaults if not specified
+    -- and only override what's in your server_specific_config
+    -- So, you can pass the server_specific_config directly and lspconfig will merge
+    -- if your server_specific_config contains keys like 'on_attach', 'capabilities'
+    -- they would override the general ones.
+    -- It's often cleaner to prepare a base opts table and then merge specifics.
+
+    -- For example, if `server_specific_config` might also contain `on_attach` or `capabilities`
+    -- and you want them to take precedence for that server:
+    local final_opts = vim.tbl_deep_extend("force", {
+        capabilities = capabilities,
+        on_attach = on_attach,
+    }, server_specific_config) -- server_specific_config contains settings, filetypes, cmd etc.
+
+    lspconfig[server_name].setup(final_opts)
+end
+
+-- Turn on diagnostic highlighting.
+-- ... (rest of your file) ...
+-- Load the user-specified LSP servers.
+
 
 -- Turn on diagnostic highlighting.
 vim.diagnostic.config {

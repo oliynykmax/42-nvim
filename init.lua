@@ -4,7 +4,7 @@
 ---@diagnostic disable: missing-fields
 -- Set Vim settings. Necessary before lazy is run.
 require "config.vim_settings"
-
+vim.api.nvim_set_keymap('n', '<F2>', ':CFormat42<CR>', { noremap = true, silent = true })
 -- Install lazy.nvim, the package manager.
 --    `:help lazy.nvim.txt` for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -19,7 +19,6 @@ if not vim.loop.fs_stat(lazypath) then
   }
 end
 vim.opt.rtp:prepend(lazypath)
-
 -- Validate that lazy is available.
 if not pcall(require, "lazy") then
   vim.api.nvim_echo({ { ("Unable to load lazy from: %s\n"):format(lazypath), "ErrorMsg" }, { "Press any key to exit...", "MoreMsg" } }, true, {})
@@ -65,3 +64,4 @@ if (vim.g.user42 ~= "SET YOUR USER UP") then
 else
 	vim.notify("If you see this you haven't configured your stuff!\nDon't forget to take a peek at your ~/.config/nvim", "error", { title = "42-Nvim" })
 end
+
